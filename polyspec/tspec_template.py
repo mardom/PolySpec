@@ -90,7 +90,7 @@ class TSpecTemplate():
         assert self.Lmax<=base.lmax, "Maximum L can't be larger than HEALPix resolution"
         
         # Check lensing L ranges
-        if 'lensing' in self.templates or 'isw-lensing' in self.templates:
+        if 'lensing' in self.templates:
             if Lmin_lens==None:
                 if np.any(['gNL' in t for t in self.templates]):
                     self.Lmin_lens = 1
@@ -112,6 +112,19 @@ class TSpecTemplate():
             assert self.Lmin_lens>=1, "Minimum L_lens can't be less than 1"
             assert self.Lmax_lens<=2*self.lmax, "Lmax_lens <= 2*lmax by the triangle conditions"
             assert self.Lmax_lens<=base.lmax, "Maximum L can't be larger than HEALPix resolution"
+        
+        # Check ISW-lensing L ranges
+        if 'isw-lensing' in self.templates:
+            if Lmin_lens==None:
+                self.Lmin_lens = 1
+            else:
+                assert Lmin_lens == 1, "For ISW-lensing, we can't restrict Lmin_lens!"
+                self.Lmin_lens = Lmin_lens
+            if Lmax_lens==None:
+                self.Lmax_lens = min([base.lmax,2*self.lmax])
+            else:
+                assert Lmax_lens == min([base.lmax,2*self.lmax]), "For ISW-lensing, we can't restrict Lmax_lens!"
+                self.Lmax_lens = Lmax_lens
             
         # Compute filters for ell range of interest
         self.lfilt = (self.base.l_arr>=self.lmin)&(self.base.l_arr<=self.lmax)
@@ -576,9 +589,27 @@ class TSpecTemplate():
             x_arr += list(np.linspace(lmax*100,max_kr*1.01,1000))
         x_arr = np.asarray(x_arr,dtype=np.float64)
         
+        # x_test = x_arr[::100]
+        # jlxs = np.zeros((lmax-lmin+1,len(x_test)),dtype=np.float64,order='C')
+        # compute_bessel(x_test,lmin,lmax,jlxs,self.base.nthreads)
+        # for i in range(lmax-lmin+1):
+        #     # Check for nans in each row
+        #     if np.isnan(jlxs[i]).any(): 
+        #         #print(x_test[np.isnan(jlxs[i])],max_kr)
+        #         print(lmin+i,x_test[np.isnan(jlxs[i])][0])
+        #         break
+        #         print("Spherical Bessel calculation failed at l = %d"%(lmin+i))
+        # if np.isnan(jlxs).any(): raise Exception("Spherical Bessel calculation failed!")
+        # print("Failed?")
+        # import sys
+        # sys.exit()
+        
         # Compute Bessel function in range of interest in Cython
         jlxs = np.zeros((lmax-lmin+1,len(x_arr)),dtype=np.float64,order='C')
         compute_bessel(x_arr,lmin,lmax,jlxs,self.base.nthreads)
+        for i in range(lmax-lmin+1):
+            # Check for nans in each row
+            if np.isnan(jlxs[i]).any(): print("Spherical Bessel calculation failed at l = %d"%(lmin+i))
         if np.isnan(jlxs).any(): raise Exception("Spherical Bessel calculation failed!")
         
         # Interpolate to the values of interest
@@ -2318,7 +2349,9 @@ class TSpecTemplate():
         if self.pol:
             assert len(data)==3, "Data must contain T, Q, U components!"
         else:
-            assert (len(data)==1 and len(data[0])==self.base.Npix) or len(data)==self.base.Npix, "Data must contain T only!"
+            if input_type=='map':
+                assert (len(data)==1 and len(data[0])==self.base.Npix) or len(data)==self.base.Npix, "Data must contain T only!"
+            
 
         # Decide whether to compute t0 term, if not already computed
         if hasattr(self, 't0_num') and include_disconnected_term:

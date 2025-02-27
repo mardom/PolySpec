@@ -663,7 +663,8 @@ class BSpecTemplate():
         if self.pol:
             assert len(data)==3, "Data must contain T, Q, U components!"
         else:
-            assert (len(data)==1 and len(data[0])==self.base.Npix) or len(data)==self.base.Npix, "Data must contain T only!"
+            if input_type=='map':
+                assert (len(data)==1 and len(data[0])==self.base.Npix) or len(data)==self.base.Npix, "Data must contain T only!"
 
         # Apply S^-1 to data and transform to harmonic space
         t_init = time.time()

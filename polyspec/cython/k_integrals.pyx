@@ -27,9 +27,9 @@ cdef extern from "complex.h" nogil:
 @cython.cdivision(True)
 cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx_arr, int nthreads):
     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
-    cdef long ix, l, nx=len(x_arr)
+    cdef long ix, l, nx=len(x_arr), il
     cdef double[:] tmp = np.zeros(nx*(lmax+1),dtype=np.float64)
-    cdef double small = 1e-150 # set to zero below this
+    cdef double small = 1e-50 # set to zero below this
 
     # Iterate over x values    
     for ix in prange(nx,schedule='dynamic',nogil=True,num_threads=nthreads):
@@ -61,7 +61,7 @@ cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx
                 for l in xrange(lmax,0,-1):
                     if abs(bessel_smallx(l,x_arr[ix])) > small:
                         break
-                
+
                 # Compute Bessel functions up to this value with Steed's approximation (others are set to zero)
                 gsl_sf_bessel_jl_steed_array(l,x_arr[ix],&tmp[ix*(lmax+1)])
 

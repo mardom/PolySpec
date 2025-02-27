@@ -19629,7 +19629,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
  * @cython.cdivision(True)
  * cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx_arr, int nthreads):             # <<<<<<<<<<<<<<
  *     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
- *     cdef long ix, l, nx=len(x_arr)
+ *     cdef long ix, l, nx=len(x_arr), il
  */
 
 static PyObject *__pyx_pw_11k_integrals_1compute_bessel(PyObject *__pyx_self, 
@@ -19671,18 +19671,18 @@ static void __pyx_f_11k_integrals_compute_bessel(__Pyx_memviewslice __pyx_v_x_ar
   /* "k_integrals.pyx":30
  * cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx_arr, int nthreads):
  *     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
- *     cdef long ix, l, nx=len(x_arr)             # <<<<<<<<<<<<<<
+ *     cdef long ix, l, nx=len(x_arr), il             # <<<<<<<<<<<<<<
  *     cdef double[:] tmp = np.zeros(nx*(lmax+1),dtype=np.float64)
- *     cdef double small = 1e-150 # set to zero below this
+ *     cdef double small = 1e-50 # set to zero below this
  */
   __pyx_t_1 = __Pyx_MemoryView_Len(__pyx_v_x_arr); 
   __pyx_v_nx = __pyx_t_1;
 
   /* "k_integrals.pyx":31
  *     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
- *     cdef long ix, l, nx=len(x_arr)
+ *     cdef long ix, l, nx=len(x_arr), il
  *     cdef double[:] tmp = np.zeros(nx*(lmax+1),dtype=np.float64)             # <<<<<<<<<<<<<<
- *     cdef double small = 1e-150 # set to zero below this
+ *     cdef double small = 1e-50 # set to zero below this
  * 
  */
   __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
@@ -19718,13 +19718,13 @@ static void __pyx_f_11k_integrals_compute_bessel(__Pyx_memviewslice __pyx_v_x_ar
   __pyx_t_7.data = NULL;
 
   /* "k_integrals.pyx":32
- *     cdef long ix, l, nx=len(x_arr)
+ *     cdef long ix, l, nx=len(x_arr), il
  *     cdef double[:] tmp = np.zeros(nx*(lmax+1),dtype=np.float64)
- *     cdef double small = 1e-150 # set to zero below this             # <<<<<<<<<<<<<<
+ *     cdef double small = 1e-50 # set to zero below this             # <<<<<<<<<<<<<<
  * 
  *     # Iterate over x values
  */
-  __pyx_v_small = 1e-150;
+  __pyx_v_small = 1e-50;
 
   /* "k_integrals.pyx":35
  * 
@@ -20093,7 +20093,7 @@ static void __pyx_f_11k_integrals_compute_bessel(__Pyx_memviewslice __pyx_v_x_ar
  * @cython.cdivision(True)
  * cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx_arr, int nthreads):             # <<<<<<<<<<<<<<
  *     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
- *     cdef long ix, l, nx=len(x_arr)
+ *     cdef long ix, l, nx=len(x_arr), il
  */
 
   /* function exit code */
@@ -31943,7 +31943,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
  * @cython.cdivision(True)
  * cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx_arr, int nthreads):             # <<<<<<<<<<<<<<
  *     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
- *     cdef long ix, l, nx=len(x_arr)
+ *     cdef long ix, l, nx=len(x_arr), il
  */
   __pyx_tuple__22 = PyTuple_Pack(5, __pyx_n_s_x_arr, __pyx_n_s_lmin, __pyx_n_s_lmax, __pyx_n_s_jlx_arr, __pyx_n_s_nthreads); if (unlikely(!__pyx_tuple__22)) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__22);
@@ -33221,7 +33221,7 @@ if (!__Pyx_RefNanny) {
  * @cython.cdivision(True)
  * cpdef void compute_bessel(double[:] x_arr, int lmin, int lmax, double[:,::1] jlx_arr, int nthreads):             # <<<<<<<<<<<<<<
  *     """Compute j_ell(x) for all ell in [lmin, lmax] and an array of x values. We use Steed's method, filling in out-of-bounds areas with low-x or high-x approximations. Values below 1e-150 are set to zero."""
- *     cdef long ix, l, nx=len(x_arr)
+ *     cdef long ix, l, nx=len(x_arr), il
  */
   __pyx_t_7 = __Pyx_CyFunction_New(&__pyx_mdef_11k_integrals_1compute_bessel, 0, __pyx_n_s_compute_bessel, NULL, __pyx_n_s_k_integrals, __pyx_d, ((PyObject *)__pyx_codeobj__23)); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
