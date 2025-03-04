@@ -956,32 +956,22 @@ class TSpecTemplate():
         return U
     
     @_timer_func('map_transforms')
-    def _compute_lensing_V_map(self, h_lm_filt, isw=False):
+    def _compute_lensing_V_map(self, h_lm_filt):
         """
-        Compute lensing V map from a given data vector. These are used in the trispectrum numerators. This can also compute the ISW-weighted fields.
+        Compute lensing V map from a given data vector. These are used in the trispectrum numerators.
         """
         
         # Output array
         V = np.zeros((1+2*self.pol,self.base.Npix),dtype=np.complex128,order='C')
             
         if not self.pol:
-            if not isw:
-                pref = np.sqrt(self.ls*(self.ls+1.))*self.C_lens_weight['TT'][self.ls]
-                inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
-                inp_lm[self.lminfilt] = pref*h_lm_filt[0]
-                V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
-                del pref, inp_lm
-            else:
-                # Apply C_l^{Tphi} filtering for ISW maps
-                pref = np.sqrt(self.ls*(self.ls+1.))*self.C_Tphi[self.ls]
-                inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
-                inp_lm[self.lminfilt] = pref*h_lm_filt[0]
-                V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
-                del pref, inp_lm
-        
-        else:
-            if isw: raise Exception("Not yet implemented!")
+            pref = np.sqrt(self.ls*(self.ls+1.))*self.C_lens_weight['TT'][self.ls]
+            inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
+            inp_lm[self.lminfilt] = pref*h_lm_filt[0]
+            V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
+            del pref, inp_lm
             
+        else:
             # Output array
             V = np.zeros((1+2*self.pol,self.base.Npix),dtype=np.complex128,order='C')
             
@@ -1013,6 +1003,28 @@ class TSpecTemplate():
             
             del pref_p, pref_m, inp_lm_re, inp_lm_im
             
+        # Return output
+        return V
+    
+    def _compute_isw_V_map(self, h_lm_filt):
+        """
+        Compute ISW-lensing V map from a given data vector. These are used in the trispectrum numerators. 
+        """
+        
+        # Output array
+        V = np.zeros((1+2*self.pol,self.base.Npix),dtype=np.complex128,order='C')
+            
+        if not self.pol:
+            # Apply C_l^{Tphi} filtering for ISW maps
+            pref = np.sqrt(self.ls*(self.ls+1.))*self.C_Tphi[self.ls]
+            inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
+            inp_lm[self.lminfilt] = pref*h_lm_filt[0]
+            V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
+            del pref, inp_lm
+    
+        else:
+            raise Exception("Not yet implemented!")
+          
         # Return output
         return V
     
@@ -1109,10 +1121,10 @@ class TSpecTemplate():
             return np.asarray([self._compute_lensing_U_map(imap) for imap in input_maps], order='C')        
             
         elif filtering=='V':
-            return np.asarray([self._compute_lensing_V_map(imap, isw=False) for imap in input_maps], order='C')        
+            return np.asarray([self._compute_lensing_V_map(imap) for imap in input_maps], order='C')        
         
         elif filtering=='V-ISW':
-            return np.asarray([self._compute_lensing_V_map(imap, isw=True) for imap in input_maps], order='C')        
+            return np.asarray([self._compute_isw_V_map(imap) for imap in input_maps], order='C')        
         
         elif filtering=='S-ISW':
             return np.asarray([self._compute_isw_S_map(imap) for imap in input_maps], order='C')        
@@ -1177,10 +1189,10 @@ class TSpecTemplate():
             output['u'] = self._compute_lensing_U_map(input_map)        
             
         if 'v' in self.to_compute:
-            output['v'] = self._compute_lensing_V_map(input_map, isw=False)
+            output['v'] = self._compute_lensing_V_map(input_map)
             
         if 'v-isw' in self.to_compute:
-            output['v-isw'] = self._compute_lensing_V_map(input_map, isw=True)
+            output['v-isw'] = self._compute_isw_V_map(input_map)
         
         if 's-isw' in self.to_compute:
             output['s-isw'] = self._compute_isw_S_map(input_map)
