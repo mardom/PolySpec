@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 cimport numpy as np
 cimport cython
-from libc.math cimport abs, M_PI, sqrt, exp, pow as dpow
+from libc.math cimport M_PI, sqrt, pow as dpow
 from cython.parallel import prange
 
 cdef extern from "complex.h" nogil:
@@ -153,7 +153,6 @@ cpdef np.ndarray[np.complex128_t,ndim=1] lens_phi_sum_sym(complex[:,::1] umap1, 
             out[i] =  2*umap1[0,i]*vmap2[0,i].conjugate()+(umap1[1,i]*vmap2[1,i].conjugate()-umap1[1,i].conjugate()*vmap2[2,i])+1.0j*(umap1[2,i]*vmap2[1,i].conjugate()+umap1[2,i].conjugate()*vmap2[2,i])+2*umap2[0,i]*vmap1[0,i].conjugate()+(umap2[1,i]*vmap1[1,i].conjugate()-umap2[1,i].conjugate()*vmap1[2,i])+1.0j*(umap2[2,i]*vmap1[1,i].conjugate()+umap2[2,i].conjugate()*vmap1[2,i])
     
     return out
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
@@ -420,7 +419,7 @@ cpdef void integrate_pq_complex_deriv(complex[:,:,::1] flXs, complex[:,::1] P_FP
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-cpdef np.ndarray[np.float64_t,ndim=2] outer_product(complex[:,:,::1] Q4_a, complex[:,:,::1] Q4_b, int nthreads, bint sym):
+cpdef np.ndarray[np.float64_t,ndim=2] outer_product_tspec(complex[:,:,::1] Q4_a, complex[:,:,::1] Q4_b, int nthreads, bint sym):
     """Compute Fisher matrix between two large arrays as an outer product.
     
     If "sym" is specified, we assume a square symmetric matrix."""
@@ -459,7 +458,7 @@ cpdef np.ndarray[np.float64_t,ndim=2] outer_product(complex[:,:,::1] Q4_a, compl
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-cpdef np.ndarray[np.float64_t,ndim=2] outer_product_ideal(complex[:,:,::1] Q4_a, complex[:,:,::1] Q4_b, int nthreads, bint sym):
+cpdef np.ndarray[np.float64_t,ndim=2] outer_product_tspec_ideal(complex[:,:,::1] Q4_a, complex[:,:,::1] Q4_b, int nthreads, bint sym):
     """Compute Fisher matrix between two large arrays as an outer product. This is parallelized across templates, not l,m.
     
     We assume a square matrix."""
@@ -491,6 +490,45 @@ cpdef np.ndarray[np.float64_t,ndim=2] outer_product_ideal(complex[:,:,::1] Q4_a,
                 for j in xrange(n_in):
                     tmp = tmp+Q4_a[0,ia,j].conjugate()*Q4_b[0,ib,j]+Q4_a[1,ia,j].conjugate()*Q4_b[1,ib,j]+9*Q4_a[2,ia,j].conjugate()*Q4_b[2,ib,j]+9*Q4_a[3,ia,j].conjugate()*Q4_b[3,ib,j]-3*Q4_a[0,ia,j].conjugate()*Q4_b[3,ib,j]-3*Q4_a[1,ia,j].conjugate()*Q4_b[2,ib,j]-3*Q4_a[3,ia,j].conjugate()*Q4_b[0,ib,j]-3*Q4_a[2,ia,j].conjugate()*Q4_b[1,ib,j]
                 fish[ia,ib] = creal(tmp)/24./48.
+    return fish  
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef np.ndarray[np.float64_t,ndim=2] outer_product_bspec(complex[:,:,::1] Q3_a, complex[:,:,::1] Q3_b, int nthreads, bint sym):
+    """Compute Fisher matrix between two large arrays as an outer product.
+    
+    If "sym" is specified, we assume a square symmetric matrix."""
+    
+    cdef int n_out1 = Q3_a.shape[1], n_out2 = Q3_b.shape[1], n_in = Q3_a.shape[2]
+    cdef int iab, ia, ib, j
+    cdef complex tmp
+    cdef np.ndarray[np.float64_t,ndim=2] fish = np.zeros((n_out1,n_out2),dtype=np.float64)
+    if sym:
+        assert n_out1==n_out2, "Matrix must be square!"
+
+    if sym:
+        with nogil:
+            for iab in prange(n_out1*n_out2,schedule='static',num_threads=nthreads):
+                ia = iab//n_out2
+                ib = iab%n_out2
+                if ia > ib: continue
+                tmp = 0.
+                for j in xrange(n_in):
+                    tmp = tmp+(Q3_a[0,ia,j].conjugate()*Q3_b[0,ib,j]+Q3_a[1,ia,j].conjugate()*Q3_b[1,ib,j])-(Q3_a[0,ia,j].conjugate()*Q3_b[1,ib,j]+Q3_a[1,ia,j].conjugate()*Q3_b[0,ib,j])
+                fish[ia,ib] = creal(tmp)/24.
+                if ia!=ib:
+                    fish[ib,ia] = creal(tmp)/24.
+    else:
+        with nogil:
+            for iab in prange(n_out1*n_out2,schedule='static',num_threads=nthreads):
+                ia = iab//n_out2
+                ib = iab%n_out2
+                tmp = 0.
+                for j in xrange(n_in):
+                    tmp = tmp+(Q3_a[0,ia,j].conjugate()*Q3_b[0,ib,j]+Q3_a[1,ia,j].conjugate()*Q3_b[1,ib,j])-(Q3_a[0,ia,j].conjugate()*Q3_b[1,ib,j]+Q3_a[1,ia,j].conjugate()*Q3_b[0,ib,j])
+                fish[ia,ib] = creal(tmp)/24.
+    
     return fish  
 
 @cython.boundscheck(False)
@@ -983,3 +1021,21 @@ cpdef double lensing_isw_sum(double complex[:,::1] u1, double complex[:,::1] u2,
         summ += creal(u2[0,i]*v1[0,i]*(-v1[0,i].conjugate()*s2[0,i]+v1[0,i]*s2[1,i]))
     return summ      
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef double isw_bispectrum_sum(complex[:,::1] umap, complex[:,::1] vmap, complex[::1] vmap_isw, int nthreads):
+    """Compute the sum over U and V maps required for the lensing-ISW bispectrum numerator""" 
+    cdef int i, ipol, npol = umap.shape[0], npix = umap.shape[1]
+    cdef double out=0.
+
+    # Spin-0
+    if npol==1:
+        for i in prange(npix, nogil=True, schedule='static', num_threads=nthreads):
+            out += 2.*creal(umap[0,i]*vmap[0,i].conjugate()*vmap_isw[i])
+
+    # All spins    
+    else:
+        for i in prange(npix, nogil=True, schedule='static', num_threads=nthreads):
+            out += creal(2.*umap[0,i]*vmap[0,i].conjugate()*vmap_isw[i]+(umap[1,i]+1.0j*umap[2,i])*vmap[1,i].conjugate()*vmap_isw[i]-(umap[1,i]+1.0j*umap[2,i])*vmap[2,i].conjugate()*vmap_isw[i].conjugate())
+    return out

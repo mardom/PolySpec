@@ -22,11 +22,11 @@ class BSpecTemplate():
     - lmin, lmax: minimum/maximum ell (inclusive)
     - ns, As, k_pivot: primordial power spectrum parameters
     - r_values, r_weights: radial sampling points and weights for 1-dimensional integrals
-    - C_Tphi: cross spectrum of temperature and lensing  [C^Tphi_0, C^Tphi_1, etc.]. Required if 'isw-lensing' is in templates.
+    - C_Tphi, C_Ephi: cross spectrum of temperature/polarization and lensing  [C^Tphi_0, C^Tphi_1, etc.]. Required if 'isw-lensing' is in templates.
     - C_lens_weight: dictionary of lensed power spectra (TT, TE, etc.). Required if 'isw-lensing' is in templates.
     - r_star, r_hor: Comoving distance to last-scattering and the horizon (default: Planck 2018 values).
     """
-    def __init__(self, base, mask, applySinv, templates, lmin, lmax,  k_arr=[], Tl_arr=[], r_arr=[], ns=0.96, As=2.1e-9, k_pivot=0.05, r_values = [], r_weights = {}, C_Tphi=[], C_lens_weight = {}, r_star=None, r_hor=None):
+    def __init__(self, base, mask, applySinv, templates, lmin, lmax,  k_arr=[], Tl_arr=[], r_arr=[], ns=0.96, As=2.1e-9, k_pivot=0.05, r_values = [], r_weights = {}, C_Tphi=[], C_Ephi=[], C_lens_weight = {}, r_star=None, r_hor=None):
         # Read in attributes
         self.base = base
         self.mask = mask
@@ -68,7 +68,7 @@ class BSpecTemplate():
             print("Polarizations: ['T']")
         
         # Configure template parameters and limits
-        self._configure_templates(templates, C_Tphi, C_lens_weight)
+        self._configure_templates(templates, C_Tphi, C_Ephi, C_lens_weight)
         
         # Check mask properties
         if not type(mask)==float or type(mask)==int:
@@ -133,7 +133,7 @@ class BSpecTemplate():
             self._prepare_templates(self.ints_1d)
             
     ### UTILITY FUNCTIONS
-    def _configure_templates(self, templates, C_Tphi, C_lens_weight):
+    def _configure_templates(self, templates, C_Tphi, C_Ephi, C_lens_weight):
         """Check input templates and log which quantities to compute."""
         
         # Check correct templates are being used and print them
@@ -172,8 +172,10 @@ class BSpecTemplate():
         if 'isw-lensing' in templates:
             # Check inputs
             assert len(C_Tphi)>0, "Must supply temperature-lensing cross spectrum!"
-            assert len(C_Tphi)>=self.lmax+1, "Must specify C^T-phi(L) up to at least Lmax."
-            assert not self.pol, "ISW-lensing not implemented for polarization!"
+            assert len(C_Tphi)>=self.lmax+1, "Must specify C^T-phi(l) up to at least lmax."
+            if self.pol:
+                assert len(C_Ephi)>0, "Must supply polarization-lensing cross spectrum!"
+                assert len(C_Ephi)>=self.lmax+1, "Must specify C^E-phi(l) up to at least lmax."
             if not self.pol:
                 assert 'TT' in C_lens_weight.keys(), "Must specify lensed TT power spectrum!"
             else:
@@ -185,6 +187,7 @@ class BSpecTemplate():
                     
             # Reshape and store
             self.C_Tphi = C_Tphi[:self.lmax+1]
+            if self.pol: self.C_Ephi = C_Ephi[:self.lmax+1]
             self.C_lens_weight = {k: C_lens_weight[k][:self.lmax+1] for k in C_lens_weight.keys()}
             self.to_compute.append(['u','v','v-isw'])
         
@@ -336,7 +339,7 @@ class BSpecTemplate():
         """
         Compute lensing U map from a given data vector. These are used in the ISW-lensing bispectrum numerators.
         
-        The U^T map is also used in the point-source estimator. (If "isw-lensing" is not in self.to_compute, we only compute U^T.)
+        The U^T map is also used in the point-source estimator. If "isw-lensing" is not in self.to_compute, we only compute U^T.
         
         We return [U^T, U^E, U^B].
         """
@@ -361,39 +364,33 @@ class BSpecTemplate():
                 # Compute X = B piece
                 inp_lm[self.lminfilt] = h_lm_filt[2]
                 U[2] = self.base.to_map_spin(inp_lm, inp_lm, spin=2, lmax=self.lmax)[0]
-          
+                
         # Return output
         return U
 
     @_timer_func('map_transforms')
-    def _compute_lensing_V_map(self, h_lm_filt, isw=False):
+    def _compute_lensing_V_map(self, h_lm_filt):
         """
-        Compute lensing V map from a given data vector. These are used in the ISW-lensing bispectrum numerators. This can also compute the ISW-weighted fields.
+        Compute the lensing V^{lens,X}_{lambda} maps from a given data vector. These are used in the ISW-lensing bispectrum numerators.
         """
         
         # Output array
         V = np.zeros((1+2*self.pol,self.base.Npix),dtype=np.complex128,order='C')
             
         if not self.pol:
-            if not isw:
-                pref = np.sqrt(self.ls*(self.ls+1.))*self.C_lens_weight['TT'][self.ls]
-                inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
-                inp_lm[self.lminfilt] = pref*h_lm_filt[0]
-                V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
-                del pref, inp_lm
-            else:
-                # Apply C_l^{Tphi} filtering for ISW maps
-                pref = np.sqrt(self.ls*(self.ls+1.))*self.C_Tphi[self.ls]
-                inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
-                inp_lm[self.lminfilt] = pref*h_lm_filt[0]
-                V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
-                del pref, inp_lm
-        
+            # Apply C_l^{TT} filtering and compute V^T
+            pref = np.sqrt(self.ls*(self.ls+1.))*self.C_lens_weight['TT'][self.ls]
+            inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
+            inp_lm[self.lminfilt] = pref*h_lm_filt[0]
+            V[0] = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
+            del pref, inp_lm
+    
         else:
-            if isw: raise Exception("Not yet implemented!")
-            
             # Output array
             V = np.zeros((1+2*self.pol,self.base.Npix),dtype=np.complex128,order='C')
+            
+            # print("REMOVE!")
+            # h_lm_filt[[1,2]] = 0.
             
             # Spin-0, X = T
             pref = np.sqrt(self.ls*(self.ls+1.))
@@ -426,6 +423,28 @@ class BSpecTemplate():
         # Return output
         return V
 
+    @_timer_func('map_transforms')
+    def _compute_isw_V_map(self, h_lm_filt):
+        """
+        Compute the ISW-lensing V^{ISW}_{+1} map from a given data vector. This is used in the ISW-lensing bispectrum numerators.
+        """
+        
+        # Output array
+        V = np.zeros(self.base.Npix,dtype=np.complex128,order='C')
+        
+        # Apply C_l^{Xphi} filtering, summing over X = T,E
+        inp_lm = np.zeros(len(self.lminfilt),dtype=np.complex128)
+        if not self.pol:
+            inp_lm[self.lminfilt] = np.sqrt(self.ls*(self.ls+1.))*self.C_Tphi[self.ls]*h_lm_filt[0]
+        else:
+            inp_lm[self.lminfilt] = np.sqrt(self.ls*(self.ls+1.))*(self.C_Tphi[self.ls]*h_lm_filt[0]+self.C_Ephi[self.ls]*h_lm_filt[1])
+
+        # Compute V_{+} map    
+        V = self.base.to_map_spin(-inp_lm,inp_lm,spin=1,lmax=self.lmax)[1] # h_lm (-1)Y_lm
+        
+        # Return output
+        return V
+
     def _filter_pair(self, input_maps, filtering = 'Q'):
         """Compute the processed field with a given filtering for a pair of input maps."""
         
@@ -439,10 +458,10 @@ class BSpecTemplate():
             return np.asarray([self._compute_lensing_U_map(imap) for imap in input_maps], order='C')        
             
         elif filtering=='V':
-            return np.asarray([self._compute_lensing_V_map(imap, isw=False) for imap in input_maps], order='C')        
+            return np.asarray([self._compute_lensing_V_map(imap) for imap in input_maps], order='C')        
         
         elif filtering=='V-ISW':
-            return np.asarray([self._compute_lensing_V_map(imap, isw=True) for imap in input_maps], order='C')        
+            return np.asarray([self._compute_isw_V_map(imap) for imap in input_maps], order='C')        
         
         else:
             raise Exception("Filtering %s is not implemented!"%filtering)
@@ -465,10 +484,10 @@ class BSpecTemplate():
             output['u'] = self._compute_lensing_U_map(input_map)        
             
         if 'v' in self.to_compute:
-            output['v'] = self._compute_lensing_V_map(input_map, isw=False)
+            output['v'] = self._compute_lensing_V_map(input_map)
             
         if 'v-isw' in self.to_compute:
-            output['v-isw'] = self._compute_lensing_V_map(input_map, isw=True)
+            output['v-isw'] = self._compute_isw_V_map(input_map)
         
         return output
     
@@ -579,7 +598,7 @@ class BSpecTemplate():
     @_timer_func('fish_outer')
     def _assemble_fish(self, Q3_a, Q3_b, sym=False):
         """Compute Fisher matrix between two Q arrays as an outer product. This is parallelized across the l,m axis."""
-        return self.utils.outer_product(Q3_a, Q3_b, sym)
+        return outer_product_bspec(Q3_a, Q3_b, self.base.nthreads, sym)
 
     def _weight_Q_maps(self, tmp_Q, weighting='Ainv'):
         """Apply inplace weighting to a Q map to form output array. This includes factors of S^-1.P if necessary."""
@@ -608,9 +627,9 @@ class BSpecTemplate():
             return self.utils.radial_sum(lm_map, weights, flXs)
             # return np.sum(self.base.to_lm_vec(map12,lmax=self.lmax).T[self.lminfilt,None,:]*flXs*weights,axis=2).T
         elif spin==1:
-            lm_map = np.asarray(self.base.to_lm_vec([map12,map12.conj()],spin=1,lmax=self.lmax)[:,:,self.lminfilt],order='C')
+            lm_map = np.asarray(self.base.to_lm_vec([map12,map12.conjugate()],spin=1,lmax=self.lmax)[:,:,self.lminfilt],order='C')
             return self.utils.radial_sum_spin1(lm_map, weights, flXs)
-            # return 0.5*np.sum((np.array([1,-1])[:,None,None]*self.base.to_lm_vec([map123,map123.conj()],spin=1,lmax=self.lmax)).sum(axis=0).T[self.lminfilt,None,:]*flXs*weights,axis=2).T
+            # return 0.5*np.sum((np.array([1,-1])[:,None,None]*self.base.to_lm_vec([map123,map123.conjugate()],spin=1,lmax=self.lmax)).sum(axis=0).T[self.lminfilt,None,:]*flXs*weights,axis=2).T
         else:
             raise Exception(f"Wrong spin s = {spin}!")
 
@@ -695,9 +714,9 @@ class BSpecTemplate():
                 print("Computing ISW-lensing template")
                 
                 t_init = time.time()
-                b3_num[ii] = np.sum(proc_maps['u'][0]*proc_maps['v'][0]*proc_maps['v-isw'][0].conjugate()).real*self.base.A_pix
+                b3_num[ii] = 0.5*isw_bispectrum_sum(proc_maps['u'], proc_maps['v'], proc_maps['v-isw'], self.base.nthreads)*self.base.A_pix
                 self.timers['lensing_summation'] += time.time()-t_init
-               
+                
         if include_linear_term:
 
             # Iterate over simulations
@@ -725,10 +744,10 @@ class BSpecTemplate():
                         t_init = time.time()
                
                         # Sum over 3 permutations
-                        summ  = np.sum(proc_maps['u'][0]*this_proc_maps['v'][0]*this_proc_maps['v-isw'][0].conjugate()).real
-                        summ += np.sum(this_proc_maps['u'][0]*proc_maps['v'][0]*this_proc_maps['v-isw'][0].conjugate()).real
-                        summ += np.sum(this_proc_maps['u'][0]*this_proc_maps['v'][0]*proc_maps['v-isw'][0].conjugate()).real
-                        b1_num[ii] += -summ*self.base.A_pix/self.N_it
+                        summ =  isw_bispectrum_sum(proc_maps['u'], this_proc_maps['v'], this_proc_maps['v-isw'], self.base.nthreads)
+                        summ += isw_bispectrum_sum(this_proc_maps['u'], proc_maps['v'], this_proc_maps['v-isw'], self.base.nthreads)
+                        summ += isw_bispectrum_sum(this_proc_maps['u'], this_proc_maps['v'], proc_maps['v-isw'], self.base.nthreads)
+                        b1_num[ii] += -0.5*summ*self.base.A_pix/self.N_it
                         self.timers['lensing_summation'] += time.time()-t_init
                                             
         if include_linear_term:
@@ -1010,40 +1029,70 @@ class BSpecTemplate():
                     
                     if verb: print("Computing Q-derivative for fNL-loc")
 
-                    # 11
-                    Qs[0,ii]  = 12./5.*self._transform_maps(self.utils.multiply(P_maps[0],Q_maps[0]),self.plXs,self.r_weights[t])
-                    Qs[0,ii] += 6./5.*self._transform_maps(self.utils.multiply(P_maps[0],P_maps[0]),self.qlXs,self.r_weights[t])
-                    
-                    # 22
-                    Qs[1,ii]  = 12./5.*self._transform_maps(self.utils.multiply(P_maps[1],Q_maps[1]),self.plXs,self.r_weights[t])
-                    Qs[1,ii] += 6./5.*self._transform_maps(self.utils.multiply(P_maps[1],P_maps[1]),self.qlXs,self.r_weights[t])
+                    # Iterate over both the 11 and 22 pieces
+                    for index in [0,1]:
+                        Qs[index,ii]  = 12./5.*self._transform_maps(self.utils.multiply(P_maps[index],Q_maps[index]),self.plXs,self.r_weights[t])
+                        Qs[index,ii] += 6./5.*self._transform_maps(self.utils.multiply(P_maps[index],P_maps[index]),self.qlXs,self.r_weights[t])
                     
                 if t=='isw-lensing':
                     if verb: print("Computing Q-derivative for isw-lensing")
                     
-                    assert not self.pol
+                    # Iterate over both the 11 and 22 pieces
+                    for index in [0,1]:
+                        
+                        ## First term
+                        # X = T
+                        input_map = 2.*np.real(V_maps[index][0]*V_isw_maps[index].conjugate())
+                        Qs[index,ii,0] = self.base.to_lm(input_map[None],lmax=self.lmax)[0,self.lminfilt]
+                        if self.pol:
+                            # X = E, B
+                            input_map = V_maps[index][1]*V_isw_maps[index].conjugate() - V_maps[index][2]*V_isw_maps[index]
+                            output_lm = 0.5*self.base.to_lm_spin(input_map[None],input_map[None].conjugate(),spin=2,lmax=self.lmax)[:,self.lminfilt]
+                            Qs[index,ii,1] = output_lm[0] + output_lm[1]
+                            Qs[index,ii,2] = -1.0j*(output_lm[0] - output_lm[1])
+                                
+                        ## Second term
+                        # Y = T
+                        pref = np.sqrt(self.ls*(self.ls+1.))
+                        input_map = U_maps[index][0]*V_isw_maps[index] 
+                        out_lm = self.base.to_lm_spin(input_map.conjugate(), input_map, spin=1, lmax=self.lmax)[:,self.lminfilt].copy()
+                        Qs[index,ii,0] += -self.C_lens_weight['TT'][self.ls]*pref*(out_lm[0]-out_lm[1])
+                        if self.pol:
+                            Qs[index,ii,1] += -self.C_lens_weight['TE'][self.ls]*pref*(out_lm[0]-out_lm[1])
+
+                            # Y = E, B
+                            prefP = np.sqrt((self.ls+2.)*(self.ls-1.))
+                            prefM = np.sqrt((self.ls-2.)*(self.ls+3.)) 
+
+                            # Compute spin-1 transforms
+                            input_map = (U_maps[index][1] + 1.0j*U_maps[index][2])*V_isw_maps[index]
+                            out_lm1 = self.base.to_lm_spin(input_map, input_map.conjugate(), spin=1, lmax=self.lmax)[:,self.lminfilt]
+                            
+                            # Compute spin-3 transforms
+                            input_map = -(U_maps[index][1] + 1.0j*U_maps[index][2])*V_isw_maps[index].conjugate()                        
+                            out_lm3 = self.base.to_lm_spin(input_map, input_map.conjugate(), spin=3, lmax=self.lmax)[:,self.lminfilt]
+
+                            # Assemble output
+                            diff_lm = prefP*(out_lm1[0]-out_lm1[1]) + prefM*(out_lm3[0]-out_lm3[1])
+                            sum_lm = prefP*(out_lm1[0]+out_lm1[1]) + prefM*(out_lm3[0]+out_lm3[1])
+                            Qs[index,ii,0] += 0.5*self.C_lens_weight['TE'][self.ls]*diff_lm
+                            Qs[index,ii,1] += 0.5*self.C_lens_weight['EE'][self.ls]*diff_lm
+                            Qs[index,ii,2] += -1.0j*0.5*self.C_lens_weight['BB'][self.ls]*sum_lm
+                            del out_lm1, out_lm3, diff_lm, sum_lm, prefP, prefM
+                        
+                        ## Third term
+                        input_map = U_maps[index][0]*V_maps[index][0].conjugate()
+                        if not self.pol:
+                            input_map = U_maps[index][0]*V_maps[index][0].conjugate()
+                            Qs[index,ii,0] += -self.C_Tphi[self.ls]*np.sqrt(self.ls*(self.ls+1.))*np.sum(np.array([1,-1])[:,None]*self.base.to_lm_spin(input_map, input_map.conjugate(), spin=1,lmax=self.lmax)[:,self.lminfilt],axis=0)
+                        else: 
+                            input_map = 2.*U_maps[index][0]*V_maps[index][0].conjugate()
+                            input_map += (U_maps[index][1] + 1.0j*U_maps[index][2])*V_maps[index][1].conjugate() + (-U_maps[index][1].conjugate() + 1.0j*U_maps[index][2].conjugate())*V_maps[index][2]
+                            out_lm = np.sqrt(self.ls*(self.ls+1.))*np.sum(np.array([1,-1])[:,None]*self.base.to_lm_spin(input_map, input_map.conjugate(), spin=1,lmax=self.lmax)[:,self.lminfilt],axis=0)
+                            Qs[index,ii,0] += -0.5*self.C_Tphi[self.ls]*out_lm
+                            Qs[index,ii,1] += -0.5*self.C_Ephi[self.ls]*out_lm
+                            del out_lm
                     
-                    pref1 = self.C_Tphi[self.ls]*np.sqrt(self.ls*(self.ls+1.))
-                    pref2 = self.C_lens_weight['TT'][self.ls]*np.sqrt(self.ls*(self.ls+1.))
-                    
-                    # First term
-                    input_map = np.real(V_maps[0]*V_isw_maps[0].conjugate())
-                    Qs[0,ii,0] = 2*self.base.to_lm(input_map[None],lmax=self.lmax)[0,self.lminfilt]
-                    input_map = np.real(V_maps[1]*V_isw_maps[1].conjugate())
-                    Qs[1,ii,0] = 2*self.base.to_lm(input_map[None],lmax=self.lmax)[0,self.lminfilt]
-                    
-                    # Second term
-                    input_map = U_maps[0]*V_maps[0] 
-                    Qs[0,ii,0] += pref1*np.sum(np.array([-1,1])[:,None]*self.base.to_lm_spin(input_map.conj(), input_map,spin=1,lmax=self.lmax)[:,self.lminfilt],axis=0)
-                    input_map = U_maps[1]*V_maps[1] 
-                    Qs[1,ii,0] += pref1*np.sum(np.array([-1,1])[:,None]*self.base.to_lm_spin(input_map.conj(), input_map,spin=1,lmax=self.lmax)[:,self.lminfilt],axis=0)
-                    
-                    # Third term
-                    input_map = U_maps[0]*V_isw_maps[0] 
-                    Qs[0,ii,0] += pref2*np.sum(np.array([-1,1])[:,None]*self.base.to_lm_spin(input_map.conj(), input_map,spin=1,lmax=self.lmax)[:,self.lminfilt],axis=0)
-                    input_map = U_maps[1]*V_isw_maps[1] 
-                    Qs[1,ii,0] += pref2*np.sum(np.array([-1,1])[:,None]*self.base.to_lm_spin(input_map.conj(), input_map,spin=1,lmax=self.lmax)[:,self.lminfilt],axis=0)
-            
             if weighting=='Ainv' and verb: print("Applying S^-1 weighting to output")
             for qindex in range(2):
                 self._weight_Q_maps(Qs[qindex], weighting)
