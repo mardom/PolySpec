@@ -19,6 +19,7 @@ In the templates classes, we can estimate the following types of trispectra:
 - `tauNL-direc`, `tauNL-even`, `tauNL-odd`: Direction-dependent tauNL templates
 - `tauNL-heavy`, `tauNL-light`: Cosmological collider signatures from massive spinning particles
 - `lensing`, `isw-lensing`, `point-source`: CMB lensing, lensing-ISW cross-correlations, and point source amplitudes.
+
 We also include a few bispectrum estimators:
 - `fNL-loc`: Quadratic local templates
 - `isw-lensing`: Lensing-ISW cross-correlations (i.e. the lensing bispectrum).
