@@ -120,7 +120,7 @@ class BSpecTemplate():
             
             assert len(r_values)>0, "Must supply radial sampling points!"
             for t in templates:
-                if (t in self.all_templates_1d) or ('tauNL-direc' in t) or ('tauNL-even' in t) or ('tauNL-odd' in t):
+                if (t in self.all_templates_1d):
                     assert t in r_weights.keys(), "Must supply weight for template %s"%t
             self.r_arr = r_values
             self.N_r = len(self.r_arr)
