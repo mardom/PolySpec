@@ -100,7 +100,7 @@ class BSpecBin():
         self.good_bins = []
         for u in self.fields:
             u1, u2, u3 = [self.base.indices[u[i]] for i in range(3)]
-            p_u = np.product([self.base.parities[u[i]] for i in range(3)])
+            p_u = np.prod([self.base.parities[u[i]] for i in range(3)])
             
             for bin1 in range(self.Nl_squeeze):
                 for bin2 in range(self.Nl_squeeze):
@@ -719,7 +719,7 @@ class BSpecBin():
             index = -1
             for u in self.fields:
                 u1, u2, u3 = [self.base.indices[u[i]] for i in range(3)]
-                p_u = np.product([self.base.parities[u[i]] for i in range(3)])
+                p_u = np.prod([self.base.parities[u[i]] for i in range(3)])
 
                 for bin1 in range(self.Nl_squeeze):
                     for bin2 in range(self.Nl_squeeze):
@@ -743,7 +743,7 @@ class BSpecBin():
                             index_p = -1
                             for u_p in self.fields:
                                 u1_p, u2_p, u3_p = [self.base.indices[u_p[i]] for i in range(3)]
-                                p_u_p = np.product([self.base.parities[u_p[i]] for i in range(3)])
+                                p_u_p = np.prod([self.base.parities[u_p[i]] for i in range(3)])
 
                                 for bin1_p in range(self.Nl_squeeze):
                                     for bin2_p in range(self.Nl_squeeze):

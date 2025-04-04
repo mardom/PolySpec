@@ -3,22 +3,30 @@
 import numpy as np, healpy
 
 class Weightings():
-    def __init__(self, base, mask, Cl_raw, noise_cov=None, inpainting_mask=None):
+    def __init__(self, base, Cl_raw, mask=None, noise_cov=None, inpainting_mask=None):
         """Class used to applying the S^-1 weight to a pixel-space map. This includes an idealized harmonic weighting and a full conjugate gradient descent solution.
         
         Inputs:
         - base: PolySpec base class.
-        - mask: Pixel-space mask (optionally one for each spin). For ideal S^-1, this should be smoothed, but for optimal S^-1, a boolean mask is preferred.
-        - Cl_raw: Dictionary containing fiducial power spectra (without the beam or noise)
-        - noise_cov: Pixel-space noise covariance (optional, but required to compute the optimal weighting)
-        - inpainting_mask: Boolean mask specifying which pixels to inpaint (optional, and used only in the idealized weighting) 
+        - mask: Pixel-space mask (optionally one for each spin). This is only required for the optimal weighting.
+        - Cl_raw: Dictionary containing fiducial power spectra (without the beam or noise). 
+        - noise_cov: Pixel-space noise covariance. This is only required for the optimal weighting.
+        - inpainting_mask: Boolean mask specifying which pixels to inpaint. This is optional, and only used in the idealized weighting. 
         """
         # Setup attributes
         self.base = base
-        self.mask = mask
         self.Cl_raw = Cl_raw
         self.pol = self.base.pol
         self.pixel_area = 4.*np.pi/healpy.nside2npix(self.base.Nside)
+        
+        # Check the mask
+        if mask is not None:
+            if not type(mask)==float or type(mask)==int:
+                if len(mask)==1 or len(mask)==3:
+                    assert len(mask[0])==self.base.Npix, f'Mask has incorrect shape: {mask.shape}'
+                else:
+                    assert len(mask)==self.base.Npix, f'Mask has incorrect shape: {mask.shape}'
+            self.mask = mask
         
         # Check noise covariance
         if noise_cov is not None:
@@ -46,7 +54,10 @@ class Weightings():
         if hasattr(self, 'noise_cov'):
             self.Nl_iso = np.zeros(1+2*self.pol)
             for i in range(1+2*self.pol):
-                self.Nl_iso[i] = np.mean(self.noise_cov[i][self.mask[i]>0.99])*self.pixel_area
+                if np.sum(self.mask[i])==0:
+                    self.Nl_iso[i] = 1e-24 # avoid zero errors for a null mask
+                else:
+                    self.Nl_iso[i] = np.mean(self.noise_cov[i][self.mask[i]>0.99])*self.pixel_area
             
             # Load raw power spectra and take inverse
             if self.pol:
@@ -77,13 +88,6 @@ class Weightings():
             inv_Slm[:,:,self.base.l_arr<2] = inv_Slm[:,:,[self.base.l_arr==2][0]]
             self.Sigmalm = np.asarray(np.moveaxis(np.linalg.inv(np.moveaxis(inv_Slm,[0,1,2],[1,2,0])),[0,1,2],[2,0,1]),order='C')
         
-        # Check mask properties
-        if not type(mask)==float or type(mask)==int:
-            if len(mask)==1 or len(mask)==3:
-                assert len(mask[0])==self.base.Npix, f'Mask has incorrect shape: {mask.shape}'
-            else:
-                assert len(mask)==self.base.Npix, f'Mask has incorrect shape: {mask.shape}'
-    
     def inpaint_map(self, input_map, n_average=50):
         """
         Apply linear inpainting to a map. We replace each inpainted pixel with the average of its (non-zero) neighbors and iterate over unfilled pixels. 
@@ -195,7 +199,6 @@ class Weightings():
         
         # Apply weighting in harmonic-space
         if input_type=='harmonic':
-            assert np.mean(self.mask)==1, "Harmonic-space S^-1 requires a unit mask!"
             lfilt = self.base.l_arr<=lmax
             return self.beam_lm[:,lfilt]*np.einsum("abl,bl->al",self.base.inv_Cl_tot_lm_mat[:,:,lfilt], input_map)
         elif input_type=='map':

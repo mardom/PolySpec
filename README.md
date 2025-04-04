@@ -2,22 +2,27 @@
 
 # PolySpec
 PolySpec (formerly PolyBin) is a Python code that estimates $N$-point correlation functions for 2D HEALPix maps, optionally with spin (e.g., CMB temperature, polarization, galaxy positions and cosmic shear). There are two main functionalities:
-- **Templates**: This directly estimates the amplitude of inflationary templates in CMB data, such as gNL or tauNL, in addition to late time templates such as CMB lensing. This includes thirteen types of trispectrum estimator (see below), and provides quasi-optimal estimates of the template amplitudes, accounting for arbitrary beams, masks, and filtering. 
+- **Templates**: This directly estimates the amplitude of inflationary templates in CMB data, such as fNL, gNL or tauNL, in addition to late time templates such as CMB lensing. This includes fourteen types of trispectrum estimator and two types of bispectrum estimator (see below), and provides quasi-optimal estimates of the template amplitudes, accounting for arbitrary beams, masks, and filtering. 
 - **Binned Statistics**: This estimates the binned power spectrum, bispectrum and trispectrum of a 2D field, accounting for correlations between bins. For each statistic, two estimators are available: the standard/ideal estimators (i.e. pseudo-Cl), which do not take into account the mask, and window-deconvolved estimators, which do. In the second case, we require computation of a numerical Fisher matrix; this depends on binning and the mask, but does not need to be recomputed for each new simulation. For the bispectrum and trispectrum, we can compute both the *parity-even* and *parity-odd* components, accounting for any leakage between the two.
 
 PolySpec contains the following main modules:
 - `pspec_bin`: Binned power spectra
 - `bspec_bin`: Binned bispectra
 - `tspec_bin`: Binned trispectra
+- `bspec_template`: Direct estimation of bispectrum template amplitudes
 - `tspec_template`: Direct estimation of trispectrum template amplitudes
 
-In the templates class, we can estimate the following types of trispectra:
+In the templates classes, we can estimate the following types of trispectra:
 - `gNL-loc`, `tauNL-loc`: Cubic local templates
 - `gNL-con`: Featureless constant template
 - `gNL-dotdot`, `gNL-dotdel`, `gNL-deldel`: Effective Field Theory of Inflation templates
 - `tauNL-direc`, `tauNL-even`, `tauNL-odd`: Direction-dependent tauNL templates
 - `tauNL-heavy`, `tauNL-light`: Cosmological collider signatures from massive spinning particles
-- `lensing`, `point-source`: CMB lensing and point source amplitudes
+- `lensing`, `isw-lensing`, `point-source`: CMB lensing, lensing-ISW cross-correlations, and point source amplitudes.
+
+We also include a few bispectrum estimators:
+- `fNL-loc`: Quadratic local templates
+- `isw-lensing`: Lensing-ISW cross-correlations (i.e. the lensing bispectrum).
 
 For details on the binned estimators, see the [Binned Tutorial](Tutorial-Binned.ipynb). For details on the template estimators see the [Template Tutorial](Tutorial-Template.ipynb).
 
@@ -31,7 +36,7 @@ base = ps.PolySpec(Nside, fiducial_Cl_tot, beam, backend="ducc")
 
 # Load the trispectrum template class, specifying the templates to analyze
 tspec = ps.TSpecTemplate(base, smooth_mask, applySinv, ["gNL-loc","lensing"], 
-                         k_array, transfer_array, lmin=lmin, lmax=lmax, Lmin=Lmin, Lmax=Lmax,
+                         lmin, lmax, k_array, transfer_array, Lmin, Lmax,
                          C_phi=Cl_phi, C_lens_weight = Cl_lensed)
 
 # Perform optimization to compute the radial integration points
@@ -82,10 +87,11 @@ When using the template estimators, a number of Cython modules must be installed
 2. Philcox, O. H. E., "Optimal Estimation of the Binned Mask-Free Power Spectrum, Bispectrum, and Trispectrum on the Full Sky: Tensor Edition", (2023) ([arXiv](https://arxiv.org/abs/2306.03915))
 3. Philcox, O. H. E., "Searching for Inflationary Physics with the CMB Trispectrum: 1. Primordial Theory & Optimal Estimators", (2025) ([arXiv](https://arxiv.org/abs/2502.04434))
 4. Philcox, O. H. E., "Searching for Inflationary Physics with the CMB Trispectrum: 2. Code & Validation", (2025) ([arXiv](http://arxiv.org/abs/2502.05258))
+5. Philcox, O. H., E., Hill, J., C., "The ISW-Lensing Bispectrum & Trispectrum", (2025) (in prep)
 
 ### Applications
-5. Philcox, O. H. E., "Do the CMB Temperature Fluctuations Conserve Parity?", (2023) ([arXiv](https://arxiv.org/abs/2303.12106))
-6. Philcox, O. H. E., Shiraishi, M., "Testing Parity Symmetry with the Polarized Cosmic Microwave Background", (2023) ([arXiv](https://arxiv.org/abs/2308.03831))
-7. Philcox, O. H. E., Shiraishi, M., "Testing graviton parity and Gaussianity with Planck T-, E-, and B-mode bispectra", (2024) ([arXiv](https://arxiv.org/abs/2312.12498))
-8. Philcox, O. H. E., Shiraishi, M., "Non-Gaussianity Beyond the Scalar Sector: A Search for Tensor and Mixed Tensor-Scalar Bispectra with Planck Data", (2024) ([arXiv](https://arxiv.org/abs/2409.10595))
-9. Philcox, O. H. E., "Searching for Inflationary Physics with the CMB Trispectrum: 3. Constraints from Planck", (2025) ([arXiv](https://arxiv.org/abs/2502.06931))
+6. Philcox, O. H. E., "Do the CMB Temperature Fluctuations Conserve Parity?", (2023) ([arXiv](https://arxiv.org/abs/2303.12106))
+7. Philcox, O. H. E., Shiraishi, M., "Testing Parity Symmetry with the Polarized Cosmic Microwave Background", (2023) ([arXiv](https://arxiv.org/abs/2308.03831))
+8. Philcox, O. H. E., Shiraishi, M., "Testing graviton parity and Gaussianity with Planck T-, E-, and B-mode bispectra", (2024) ([arXiv](https://arxiv.org/abs/2312.12498))
+9. Philcox, O. H. E., Shiraishi, M., "Non-Gaussianity Beyond the Scalar Sector: A Search for Tensor and Mixed Tensor-Scalar Bispectra with Planck Data", (2024) ([arXiv](https://arxiv.org/abs/2409.10595))
+10. Philcox, O. H. E., "Searching for Inflationary Physics with the CMB Trispectrum: 3. Constraints from Planck", (2025) ([arXiv](https://arxiv.org/abs/2502.06931))

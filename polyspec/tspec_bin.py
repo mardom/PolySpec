@@ -454,7 +454,7 @@ class TSpecBin():
         index = 0
         for u in self.fields:
             u1, u2, u3, u4 = [self.base.indices[u[i]] for i in range(4)]
-            p_u = np.product([self.base.parities[u[i]] for i in range(4)])
+            p_u = np.prod([self.base.parities[u[i]] for i in range(4)])
             if verb: print("Analyzing 4-field trispectrum numerator for field %s"%u)
 
             # Iterate over bins satisfying relevant conditions
@@ -518,7 +518,7 @@ class TSpecBin():
                 index = 0
                 for u in self.fields:
                     u1, u2, u3, u4 = [self.base.indices[u[i]] for i in range(4)]
-                    p_u = np.product([self.base.parities[u[i]] for i in range(4)])
+                    p_u = np.prod([self.base.parities[u[i]] for i in range(4)])
                     
                     # Iterate over bins satisfying relevant conditions
                     for bin1 in range(self.Nl_squeeze):
@@ -635,7 +635,7 @@ class TSpecBin():
             indices = []
             for u in self.fields:
                 u1, u2, u3, u4 = [self.base.indices[u[i]] for i in range(4)]
-                p_u = np.product([self.base.parities[u[i]] for i in range(4)])
+                p_u = np.prod([self.base.parities[u[i]] for i in range(4)])
 
                 # Iterate over bins satisfying relevant conditions
                 for bin1 in range(self.Nl_squeeze):
@@ -962,7 +962,7 @@ class TSpecBin():
             index = 0
             for u in self.fields:
                 u1, u2, u3, u4 = [self.base.indices[u[i]] for i in range(4)]
-                p_u = np.product([self.base.parities[u[i]] for i in range(4)])
+                p_u = np.prod([self.base.parities[u[i]] for i in range(4)])
 
                 # Iterate over bins satisfying relevant conditions
                 for bin1 in range(self.Nl_squeeze):
@@ -1081,7 +1081,7 @@ class TSpecBin():
         index = 0
         for u in self.fields:
             u1, u2, u3, u4 = [self.base.indices[u[i]] for i in range(4)]
-            p_u = np.product([self.base.parities[u[i]] for i in range(4)])
+            p_u = np.prod([self.base.parities[u[i]] for i in range(4)])
             if verb: print("Analyzing trispectrum numerator for field %s"%u)
 
             # Iterate over bins satisfying relevant conditions
@@ -1157,7 +1157,7 @@ class TSpecBin():
             index = -1
             for u in self.fields:
                 u1, u2, u3, u4 = [self.base.indices[u[i]] for i in range(4)]
-                p_u = np.product([self.base.parities[u[i]] for i in range(4)])
+                p_u = np.prod([self.base.parities[u[i]] for i in range(4)])
                 
                 # Iterate over bins satisfying relevant conditions
                 for bin1 in range(self.Nl_squeeze):
@@ -1187,7 +1187,7 @@ class TSpecBin():
                                     index_p = -1
                                     for u_p in self.fields:
                                         u1_p, u2_p, u3_p, u4_p = [self.base.indices[u_p[i]] for i in range(4)]
-                                        p_u_p = np.product([self.base.parities[u_p[i]] for i in range(4)])
+                                        p_u_p = np.prod([self.base.parities[u_p[i]] for i in range(4)])
 
                                         # Iterate over bins satisfying relevant conditions
                                         for bin1_p in range(self.Nl_squeeze):
