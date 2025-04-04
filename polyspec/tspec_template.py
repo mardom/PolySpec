@@ -3005,7 +3005,7 @@ class TSpecTemplate():
                             t0_num[ii] += contact_sum*self.base.A_pix/8./self.N_it
                             self.timers['lensing_summation'] += time.time()-t_init
                         del Phi_sum, contact_sum
-                        
+                    
                     if t=='point-source':
                         t_init = time.time()
                         

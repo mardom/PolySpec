@@ -105,7 +105,7 @@ base = ps.PolySpec(Nside, Cl_fid, beam, pol=True, backend=backend)
 
 # Define weighting class and S^-1 weighting scheme
 cl_dict = {'TT':clTT,'TE':clTE,'EE':clEE,'BB':clBB}
-weightings = ps.Weightings(base, smooth_mask, cl_dict, noise_cov, inpainting_mask)
+weightings = ps.Weightings(base, cl_dict, smooth_mask, noise_cov, inpainting_mask)
 
 def applySinv(input_map, input_type='map', lmax=3*Nside-1):
     """

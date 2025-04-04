@@ -145,6 +145,10 @@ with np.load(transfer_file,allow_pickle=True) as transfer_inp:
     clTT, clEE, clBB, clTE = transfer_inp['cls'].flat[0]['lensed_scalar'].T
     clPP = transfer_inp['cls'].flat[0]['lens_potential'][:,0]
 
+# Null TE correlations if not using T-modes
+if pol_only:
+    clTE *= 0.
+
 # Load temperature and polarization beam from file
 # Note: This should include any transfer functions and pixel window functions
 beam = np.load(data_dir+beam_file)[:1+pol,:3*Nside]
@@ -171,7 +175,7 @@ base = ps.PolySpec(Nside, Cl_fid, beam, pol=pol, backend=backend)
 
 # Define weighting class and S^-1 weighting scheme
 cl_dict = {'TT':clTT,'TE':clTE,'EE':clEE,'BB':clBB}
-weightings = ps.Weightings(base, smooth_mask, cl_dict, noise_cov, inpainting_mask)
+weightings = ps.Weightings(base, cl_dict, smooth_mask, noise_cov, inpainting_mask)
 
 def applySinv(input_map, input_type='map', lmax=3*Nside-1):
     """
